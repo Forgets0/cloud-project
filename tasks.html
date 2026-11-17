@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Мои задачи</title>
+<style>
+  body { font-family: system-ui, Arial, sans-serif; max-width: 560px; margin: 40px auto; padding: 0 16px; color: #1f2933; }
+  h1 { font-size: 1.6rem; }
+  form { display: flex; gap: 8px; margin-bottom: 20px; }
+  input { flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; }
+  button { padding: 8px 14px; border: 0; border-radius: 8px; background: #2563eb; color: #fff; font-weight: 600; cursor: pointer; }
+  button:hover { background: #1d4ed8; }
+  ul { list-style: none; padding: 0; }
+  li { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
+  li span { flex: 1; }
+  li .del { background: #94a3b8; }
+</style>
+</head>
+<body>
+
+<p><a href="index.html">← Обо мне</a></p>
+<h1>Мои задачи</h1>
+<form id="form">
+  <input id="title" placeholder="Новая задача" required>
+  <button>Добавить</button>
+</form>
+<ul id="list"></ul>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+
+  const db = supabase.createClient("https://cthltenhqlcorosmpsed.supabase.co", "sb_publishable_kucYsh8Ugb13mHiK3zeLjw_QjON0GQp");
+  const list = document.getElementById("list");
+
+  async function loadTasks() {
+    const { data, error } = await db.from("tasks").select("*").order("id");
+    if (error) return alert(error.message);
+    list.innerHTML = "";
+    for (const t of data) {
+      const li = document.createElement("li");
+      const text = document.createElement("span");
+      text.textContent = t.title;
+      if (t.done) text.style.textDecoration = "line-through";  // зачёркиваем сделанное
+      li.append(text);
+
+      if (!t.done) {
+        const ok = document.createElement("button");
+        ok.textContent = "Сделано";
+        ok.onclick = () => doneTask(t.id);
+        li.append(ok);
+      }
+
+      const del = document.createElement("button");
+      del.textContent = "Удалить";
+      del.className = "del";
+      del.onclick = () => deleteTask(t.id);
+      li.append(del);
+
+      list.append(li);
+    }
+  }
+
+  // по образцу deleteTask, только .update({ done: true }) вместо .delete()
+  async function doneTask(id) {
+    const { error } = await db.from("tasks").update({ done: true }).eq("id", id);
+    if (error) return alert(error.message);
+    await loadTasks();
+  }
+
+  async function deleteTask(id) {
+    const { error } = await db.from("tasks").delete().eq("id", id);
+    if (error) return alert(error.message);
+    await loadTasks();
+  }
+
+  document.getElementById("form").onsubmit = async (e) => {
+    e.preventDefault();
+    const input = document.getElementById("title");
+    const { error } = await db.from("tasks").insert({ title: input.value, done: false });
+    if (error) return alert(error.message);
+    input.value = "";
+    await loadTasks();
+  };
+
+  loadTasks();
+</script>
+</body>
+</html>
